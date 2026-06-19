@@ -1,4 +1,2 @@
-fonts-noto
-fonts-noto-cjk
-fonts-noto-extra
-fontconfig
+fonts-thai-tlwg
+fonts-noto-core
