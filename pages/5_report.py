@@ -3,53 +3,54 @@ pages/5_report.py
 Export Report page — PDF (ReportLab) and Excel (openpyxl).
 """
 
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import streamlit as st
 import numpy as np
-import pandas as pd
 
 from core.export import build_excel, build_pdf
 
 st.title("📤 Export Report")
 
 if "results" not in st.session_state:
-    st.warning("⚠️ Please process data on the ⚙️ Processing page first.")
+    st.warning("⚠️ Please process data on the ⚙️ page first")
     st.stop()
 
-results   = st.session_state["results"]
+results = st.session_state["results"]
 n_results = len(results)
 n_samples = st.session_state.get("n_samples_raw", 0)
-t_start   = st.session_state.get("t_start", "")
-t_end     = st.session_state.get("t_end", "")
-date_range = f"{t_start} → {t_end}" if t_start and t_end else "N/A"
+t_start = st.session_state.get("t_start", "")
+t_end = st.session_state.get("t_end", "")
+date_range = f"{t_start} → {t_end}" if t_start and t_end else "Not specified"
 
 st.markdown(f"""
 **Summary:**
 - Time range: **{date_range}**
-- Total samples: **{n_samples:,}**
-- Epochs processed: **{n_results}**
+- Sample count: **{n_samples:,}**
+- Epoch count: **{n_results}**
 """)
 
+# ─── Epoch selector for spectrum sheet / PDF spectrum page ────────────────────
 epoch_for_spectrum = st.number_input(
-    "Epoch for spectrum page in report",
+    "Epoch for the Spectrum page in the report",
     min_value=1, max_value=n_results, value=1, step=1
-) - 1
+) - 1  # convert to 0-based
 
 st.markdown("---")
 
-# ── Excel ─────────────────────────────────────────────────────────────────────
-st.markdown("### 📊 Excel Export")
+# ─── Excel Export ─────────────────────────────────────────────────────────────
+st.markdown("### 📊 Export Excel")
 st.markdown("""
-Excel file contains 3 sheets:
-- **Summary** — statistics per Hs method
-- **Timeseries** — full epoch table
-- **Spectrum** — f and Pxx for selected epoch
+The Excel file contains 3 sheets:
+- **Summary** — statistics for each Hs method
+- **Time Series** — full epoch table
+- **Spectrum** — f and Pxx values for the selected epoch
 """)
 
-if st.button("📥 Generate & Download Excel", type="primary"):
-    with st.spinner("Building Excel file..."):
+if st.button("📥 Generate and Download Excel", type="primary"):
+    with st.spinner("Generating Excel file..."):
         try:
             excel_bytes = build_excel(results, selected_epoch_idx=epoch_for_spectrum)
             st.download_button(
@@ -59,25 +60,30 @@ if st.button("📥 Generate & Download Excel", type="primary"):
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
-            st.success("✅ Excel file created!")
+            st.success("✅ Excel file generated successfully!")
         except Exception as e:
-            st.error(f"Excel generation error: {e}")
+            st.error(f"An error occurred while generating the Excel file: {e}")
 
 st.markdown("---")
 
-# ── PDF ───────────────────────────────────────────────────────────────────────
-st.markdown("### 📄 PDF Export")
+# ─── PDF Export ───────────────────────────────────────────────────────────────
+st.markdown("### 📄 Export PDF")
 st.markdown("""
-PDF report contains 5 pages:
-- Page 1: Title, date range, summary statistics table
+The PDF file contains 5 pages:
+- Page 1: Title, time range, statistics summary table
 - Page 2: Hs time series chart (all 3 methods)
 - Page 3: Energy spectrum chart
-- Page 4: Scatter plot comparison
+- Page 4: Scatter plot comparing methods
 - Page 5: Full epoch table
 """)
 
-if st.button("📥 Generate & Download PDF", type="primary"):
-    with st.spinner("Building PDF report (may take 10-30 seconds)..."):
+# Check if Thai font is available for PDF
+THAI_FONT_PATH = "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"
+if not os.path.exists(THAI_FONT_PATH):
+    st.warning("⚠️ Thai font not found — the PDF will use Helvetica instead")
+
+if st.button("📥 Generate and Download PDF", type="primary"):
+    with st.spinner("Generating PDF file (may take 10-30 seconds)..."):
         try:
             pdf_bytes = build_pdf(
                 results=results,
@@ -92,14 +98,14 @@ if st.button("📥 Generate & Download PDF", type="primary"):
                 mime="application/pdf",
                 use_container_width=True,
             )
-            st.success("✅ PDF file created!")
+            st.success("✅ PDF file generated successfully!")
         except Exception as e:
-            st.error(f"PDF generation error: {e}")
+            st.error(f"An error occurred while generating the PDF file: {e}")
 
 st.markdown("---")
 
-# ── Inline Preview ────────────────────────────────────────────────────────────
-st.markdown("### 👀 Selected Epoch Preview")
+# ─── Inline Preview ───────────────────────────────────────────────────────────
+st.markdown("### 👀 Preview of the Selected Epoch's Data for the Report")
 
 r = results[epoch_for_spectrum]
 
@@ -125,4 +131,5 @@ preview_data = {
     ]
 }
 
+import pandas as pd
 st.table(pd.DataFrame(preview_data))
