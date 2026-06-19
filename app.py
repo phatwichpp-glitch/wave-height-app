@@ -15,20 +15,40 @@ st.set_page_config(
 
 @st.cache_resource
 def setup_thai_font():
-    import subprocess
-    import os
+    import subprocess, os
+    import matplotlib.pyplot as plt
     import matplotlib.font_manager as fm
-    font_path = "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"
-    if not os.path.exists(font_path):
-        subprocess.run(
-            ["apt-get", "install", "-y", "-q", "fonts-noto"],
-            capture_output=True
-        )
-    if os.path.exists(font_path):
-        fm.fontManager.addfont(font_path)
-        import matplotlib.pyplot as plt
-        prop = fm.FontProperties(fname=font_path)
-        plt.rcParams["font.family"] = prop.get_name()
+
+    # Rebuild fontconfig cache
+    subprocess.run(["fc-cache", "-fv"], capture_output=True)
+
+    # ค้นหา font ที่รองรับภาษาไทยจากระบบ
+    result = subprocess.run(
+        ["fc-list", ":lang=th", "--format=%{file}\n"],
+        capture_output=True, text=True
+    )
+    system_fonts = [p.strip() for p in result.stdout.splitlines() if p.strip()]
+
+    # fallback paths
+    candidates = system_fonts + [
+        "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto/NotoSansThai-Regular.ttf",
+    ]
+
+    for p in candidates:
+        if os.path.exists(p):
+            fm.fontManager.addfont(p)
+            prop = fm.FontProperties(fname=p)
+            plt.rcParams["font.family"] = prop.get_name()
+            plt.rcParams["axes.unicode_minus"] = False
+            return prop.get_name()
+
+    # ไม่พบ font ไทย — ใช้ค่า default
+    plt.rcParams["axes.unicode_minus"] = False
+    return "DejaVu Sans"
 
 
 setup_thai_font()
