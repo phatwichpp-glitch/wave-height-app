@@ -3,87 +3,81 @@ pages/5_report.py
 Export Report page — PDF (ReportLab) and Excel (openpyxl).
 """
 
-import sys
-import os
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import streamlit as st
 import numpy as np
+import pandas as pd
 
 from core.export import build_excel, build_pdf
 
-st.title("📤 ส่งออกรายงาน")
+st.title("📤 Export Report")
 
 if "results" not in st.session_state:
-    st.warning("⚠️ กรุณาประมวลผลข้อมูลที่หน้า ⚙️ ก่อน")
+    st.warning("⚠️ Please process data on the ⚙️ Processing page first.")
     st.stop()
 
-results = st.session_state["results"]
+results   = st.session_state["results"]
 n_results = len(results)
 n_samples = st.session_state.get("n_samples_raw", 0)
-t_start = st.session_state.get("t_start", "")
-t_end = st.session_state.get("t_end", "")
-date_range = f"{t_start} → {t_end}" if t_start and t_end else "ไม่ระบุ"
+t_start   = st.session_state.get("t_start", "")
+t_end     = st.session_state.get("t_end", "")
+date_range = f"{t_start} → {t_end}" if t_start and t_end else "N/A"
 
 st.markdown(f"""
-**ข้อมูลสรุป:**
-- ช่วงเวลา: **{date_range}**
-- จำนวนตัวอย่าง: **{n_samples:,}**
-- จำนวน Epoch: **{n_results}**
+**Summary:**
+- Time range: **{date_range}**
+- Total samples: **{n_samples:,}**
+- Epochs processed: **{n_results}**
 """)
 
-# ─── Epoch selector for spectrum sheet / PDF spectrum page ────────────────────
 epoch_for_spectrum = st.number_input(
-    "Epoch สำหรับหน้า Spectrum ใน Report",
+    "Epoch for spectrum page in report",
     min_value=1, max_value=n_results, value=1, step=1
-) - 1  # convert to 0-based
+) - 1
 
 st.markdown("---")
 
-# ─── Excel Export ─────────────────────────────────────────────────────────────
-st.markdown("### 📊 ส่งออก Excel")
+# ── Excel ─────────────────────────────────────────────────────────────────────
+st.markdown("### 📊 Excel Export")
 st.markdown("""
-ไฟล์ Excel ประกอบด้วย 3 Sheet:
-- **สรุป** — ค่าสถิติแต่ละวิธี Hs
-- **อนุกรมเวลา** — ตาราง Epoch ทั้งหมด
-- **สเปกตรัม** — ค่า f และ Pxx ของ Epoch ที่เลือก
+Excel file contains 3 sheets:
+- **Summary** — statistics per Hs method
+- **Timeseries** — full epoch table
+- **Spectrum** — f and Pxx for selected epoch
 """)
 
-if st.button("📥 สร้างและดาวน์โหลด Excel", type="primary"):
-    with st.spinner("กำลังสร้างไฟล์ Excel..."):
+if st.button("📥 Generate & Download Excel", type="primary"):
+    with st.spinner("Building Excel file..."):
         try:
             excel_bytes = build_excel(results, selected_epoch_idx=epoch_for_spectrum)
             st.download_button(
-                label="⬇️ ดาวน์โหลด Excel Report",
+                label="⬇️ Download Excel Report",
                 data=excel_bytes,
                 file_name="wave_height_report.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
-            st.success("✅ สร้างไฟล์ Excel สำเร็จ!")
+            st.success("✅ Excel file created!")
         except Exception as e:
-            st.error(f"เกิดข้อผิดพลาดในการสร้าง Excel: {e}")
+            st.error(f"Excel generation error: {e}")
 
 st.markdown("---")
 
-# ─── PDF Export ───────────────────────────────────────────────────────────────
-st.markdown("### 📄 ส่งออก PDF")
+# ── PDF ───────────────────────────────────────────────────────────────────────
+st.markdown("### 📄 PDF Export")
 st.markdown("""
-ไฟล์ PDF ประกอบด้วย 5 หน้า:
-- หน้า 1: หัวเรื่อง, ช่วงเวลา, ตารางสรุปสถิติ
-- หน้า 2: กราฟอนุกรมเวลา Hs (ทั้ง 3 วิธี)
-- หน้า 3: กราฟสเปกตรัมพลังงาน
-- หน้า 4: Scatter Plot เปรียบเทียบวิธีการ
-- หน้า 5: ตาราง Epoch ทั้งหมด
+PDF report contains 5 pages:
+- Page 1: Title, date range, summary statistics table
+- Page 2: Hs time series chart (all 3 methods)
+- Page 3: Energy spectrum chart
+- Page 4: Scatter plot comparison
+- Page 5: Full epoch table
 """)
 
-# Check if Thai font is available for PDF
-THAI_FONT_PATH = "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"
-if not os.path.exists(THAI_FONT_PATH):
-    st.warning("⚠️ ไม่พบฟอนต์ภาษาไทย — PDF จะใช้ฟอนต์ Helvetica แทน")
-
-if st.button("📥 สร้างและดาวน์โหลด PDF", type="primary"):
-    with st.spinner("กำลังสร้างไฟล์ PDF (อาจใช้เวลา 10-30 วินาที)..."):
+if st.button("📥 Generate & Download PDF", type="primary"):
+    with st.spinner("Building PDF report (may take 10-30 seconds)..."):
         try:
             pdf_bytes = build_pdf(
                 results=results,
@@ -92,20 +86,20 @@ if st.button("📥 สร้างและดาวน์โหลด PDF", typ
                 n_samples=n_samples,
             )
             st.download_button(
-                label="⬇️ ดาวน์โหลด PDF Report",
+                label="⬇️ Download PDF Report",
                 data=pdf_bytes,
                 file_name="wave_height_report.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
-            st.success("✅ สร้างไฟล์ PDF สำเร็จ!")
+            st.success("✅ PDF file created!")
         except Exception as e:
-            st.error(f"เกิดข้อผิดพลาดในการสร้าง PDF: {e}")
+            st.error(f"PDF generation error: {e}")
 
 st.markdown("---")
 
-# ─── Inline Preview ───────────────────────────────────────────────────────────
-st.markdown("### 👀 ตัวอย่างข้อมูล Epoch ที่เลือกสำหรับ Report")
+# ── Inline Preview ────────────────────────────────────────────────────────────
+st.markdown("### 👀 Selected Epoch Preview")
 
 r = results[epoch_for_spectrum]
 
@@ -115,11 +109,11 @@ def fmt_v(v, dec=3):
     return f"{v:.{dec}f}"
 
 preview_data = {
-    "พารามิเตอร์": [
+    "Parameter": [
         "Hs_rect (m)", "Hs_spec (m)", "Hs_zc (m)",
-        "Tp (s)", "Tm02 (s)", "fp (Hz)", "H_max (m)", "จำนวนคลื่น"
+        "Tp (s)", "Tm02 (s)", "fp (Hz)", "H_max (m)", "Wave count"
     ],
-    "ค่า": [
+    "Value": [
         fmt_v(r.get("Hs_rect")),
         fmt_v(r.get("Hs_spec")),
         fmt_v(r.get("Hs_zc")),
@@ -131,5 +125,4 @@ preview_data = {
     ]
 }
 
-import pandas as pd
 st.table(pd.DataFrame(preview_data))
