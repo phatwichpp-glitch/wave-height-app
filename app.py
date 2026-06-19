@@ -6,78 +6,37 @@ Streamlit multi-page app using st.navigation.
 import streamlit as st
 
 st.set_page_config(
-    page_title="ระบบวิเคราะห์ความสูงคลื่น IMU Buoy",
+    page_title="IMU Buoy Wave Height Analyzer",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-
-@st.cache_resource
-def setup_thai_font():
-    import subprocess, os
-    import matplotlib.pyplot as plt
-    import matplotlib.font_manager as fm
-
-    # Rebuild fontconfig cache
-    subprocess.run(["fc-cache", "-fv"], capture_output=True)
-
-    # ค้นหา font ที่รองรับภาษาไทยจากระบบ
-    result = subprocess.run(
-        ["fc-list", ":lang=th", "--format=%{file}\n"],
-        capture_output=True, text=True
-    )
-    system_fonts = [p.strip() for p in result.stdout.splitlines() if p.strip()]
-
-    # fallback paths
-    candidates = system_fonts + [
-        "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/noto/NotoSansThai-Regular.ttf",
-    ]
-
-    for p in candidates:
-        if os.path.exists(p):
-            fm.fontManager.addfont(p)
-            prop = fm.FontProperties(fname=p)
-            plt.rcParams["font.family"] = prop.get_name()
-            plt.rcParams["axes.unicode_minus"] = False
-            return prop.get_name()
-
-    # ไม่พบ font ไทย — ใช้ค่า default
-    plt.rcParams["axes.unicode_minus"] = False
-    return "DejaVu Sans"
-
-
-setup_thai_font()
-
 # ─── Sidebar global settings ──────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🌊 การตั้งค่าส่วนกลาง")
+    st.markdown("## 🌊 Global Settings")
     st.markdown("---")
 
     fs = st.number_input(
-        "อัตราการสุ่มตัวอย่าง fs (Hz)",
+        "Sampling Rate fs (Hz)",
         min_value=1.0, max_value=100.0, value=5.0, step=0.5,
-        help="ความถี่ในการเก็บข้อมูล"
+        help="Data acquisition frequency"
     )
     epoch_sec = st.number_input(
-        "ความยาว Epoch (วินาที)",
+        "Epoch Length (seconds)",
         min_value=10, max_value=3600, value=60, step=10,
-        help="ความยาวของช่วงเวลาในการวิเคราะห์แต่ละ Epoch"
+        help="Duration of each analysis epoch"
     )
     hp_cutoff = st.number_input(
-        "High-pass cutoff (Hz)",
+        "High-pass Cutoff (Hz)",
         min_value=0.01, max_value=0.5, value=0.05, step=0.01,
         format="%.3f",
-        help="ความถี่ตัดผ่าน High-pass filter"
+        help="High-pass filter cutoff frequency"
     )
     lp_cutoff = st.number_input(
-        "Low-pass cutoff (Hz)",
+        "Low-pass Cutoff (Hz)",
         min_value=0.5, max_value=5.0, value=2.0, step=0.1,
-        help="ความถี่ตัดผ่าน Low-pass filter"
+        help="Low-pass filter cutoff frequency"
     )
 
     # Nyquist warning
@@ -85,10 +44,10 @@ with st.sidebar:
     if lp_cutoff > nyquist:
         st.warning(f"⚠️ Low-pass cutoff ({lp_cutoff} Hz) > Nyquist ({nyquist} Hz)")
     if fs < 2 * lp_cutoff:
-        st.warning(f"⚠️ fs ต่ำกว่า Nyquist 2× ความถี่คลื่น")
+        st.warning(f"⚠️ fs is below 2x wave frequency Nyquist limit")
 
     st.markdown("---")
-    st.caption("พัฒนาสำหรับ IMU Buoy (9-axis)\nความสูงคลื่นนัยสำคัญ (Hs)")
+    st.caption("Developed for 9-axis IMU Buoy\nSignificant Wave Height (Hs) Analysis")
 
 # Store settings in session_state for all pages
 st.session_state["fs"] = fs
@@ -98,11 +57,11 @@ st.session_state["lp_cutoff"] = lp_cutoff
 
 # ─── Navigation ───────────────────────────────────────────────────────────────
 pages = [
-    st.Page("pages/1_upload.py",     title="📁 อัปโหลดข้อมูล",       icon="📁"),
-    st.Page("pages/2_processing.py", title="⚙️ ประมวลผลสัญญาณ",      icon="⚙️"),
-    st.Page("pages/3_spectrum.py",   title="📊 การวิเคราะห์สเปกตรัม", icon="📊"),
-    st.Page("pages/4_comparison.py", title="📈 เปรียบเทียบวิธีการ",   icon="📈"),
-    st.Page("pages/5_report.py",     title="📤 ส่งออกรายงาน",         icon="📤"),
+    st.Page("pages/1_upload.py",     title="Upload Data",        icon="📁"),
+    st.Page("pages/2_processing.py", title="Signal Processing",  icon="⚙️"),
+    st.Page("pages/3_spectrum.py",   title="Spectral Analysis",  icon="📊"),
+    st.Page("pages/4_comparison.py", title="Method Comparison",  icon="📈"),
+    st.Page("pages/5_report.py",     title="Export Report",      icon="📤"),
 ]
 
 pg = st.navigation(pages)
